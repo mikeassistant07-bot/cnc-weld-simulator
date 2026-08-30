@@ -280,9 +280,16 @@
 
   $('btn-demo').onclick = () => {
     editor.value = Sim.GCode.demoFrameGcode();
-    $('fileinfo').textContent = '📄 demo: 2D window frame 1200×800 · generated';
+    $('fileinfo').textContent = '📄 demo 1: 2D window frame 1200×800 · top seams';
     $('btn-load').onclick();          // auto-load for convenience
-    toast('Demo loaded — press ▶ START to weld the frame');
+    toast('Demo 1 geladen — ▶ START schweisst den Rahmen');
+  };
+
+  $('btn-demo2').onclick = () => {
+    editor.value = Sim.GCode.demoVerticalEdgesGcode();
+    $('fileinfo').textContent = '📄 demo 2: vertikale Kanten · A/C-Achsen aktiv';
+    $('btn-load').onclick();
+    toast('Demo 2 geladen — ▶ START schweisst die Vertikalnähte');
   };
 
   function setViewMode(mode) {
@@ -338,7 +345,7 @@
   // runner hooks
   // ------------------------------------------------------------------
   runner.hooks = {
-    onTarget(q) {
+    onTarget(q, blk) {
       const before = { x: q.x, y: q.y, z: q.z };
       Sim.T.x = Sim.clampAxis('x', q.x);
       Sim.T.y = Sim.clampAxis('y', q.y);
@@ -350,17 +357,19 @@
       if (Math.abs(before.z - Sim.T.z) > 1)
         alarm('soft limit Z 2..200 — program clamped');
 
-      // bead along commanded seam while the program runs
-      if (runningMode && Sim.state.laser) {
+      // bead along commanded seam while the program runs (feed moves only,
+      // so rapid hops never leave beads) — planar AND vertical seams
+      if (runningMode && Sim.state.laser && blk && blk.kind === 'linear') {
         const p = { x: Sim.T.x, y: Sim.T.z + 0.5, z: Sim.T.y };
         if (!lastBead) lastBead = p;
-        const d = Math.hypot(p.x - lastBead.x, p.z - lastBead.z);
-        if (d > 0.7 && Math.abs(p.y - lastBead.y) < 8) {
-          Sim.addBeadSegment(lastBead, p, laserPwr);
-          lastBead = p;
-        } else if (d > 25 || Math.abs(p.y - lastBead.y) >= 8) {
-          lastBead = p;               // teleport / big move: restart bead
-        }
+        const dh = Math.hypot(p.x - lastBead.x, p.z - lastBead.z);
+        const dz = Math.abs(p.y - lastBead.y);
+        if (dh < 25 && dz < 30) {              // continuous seam path
+          if (dh > 0.7 || dz > 0.7) {
+            Sim.addBeadSegment(lastBead, p, laserPwr);
+            lastBead = p;
+          }
+        } else lastBead = p;                   // teleport: restart bead
       } else lastBead = null;
     },
     onLine(i) { markDoneUpTo(i); highlightLine(i); updateProgress(); },
@@ -460,10 +469,11 @@
     get runningMode() { return runningMode; }
   };
 
-  // auto-demo: index.html?autorun=demo  (also used for headless testing)
-  if (new URLSearchParams(location.search).get('autorun') === 'demo') {
+  // auto-demo: index.html?autorun=demo|demo2  (also used for headless testing)
+  const auto = new URLSearchParams(location.search).get('autorun');
+  if (auto === 'demo' || auto === 'demo2') {
     setTimeout(() => {
-      $('btn-demo').click();
+      $(auto === 'demo2' ? 'btn-demo2' : 'btn-demo').click();
       $('sim-speed').value = 40;
       $('sim-speed').dispatchEvent(new Event('input'));
       $('btn-play').click();

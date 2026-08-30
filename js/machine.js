@@ -396,14 +396,19 @@ window.Sim = (function () {
 
   function addRibbonQuad(i, p1, p2) {
     const dx = p2.x - p1.x, dz = p2.z - p1.z;
-    const len = Math.hypot(dx, dz) || 1;
-    const px = -dz / len * BEAD_W, pz = dx / len * BEAD_W;
-    const y = p1.y + 0.5;
+    const lenXZ = Math.hypot(dx, dz);
+    let px, pz;
+    if (lenXZ > 1e-4) {                 // planar seam: perpendicular in XZ
+      px = -dz / lenXZ * BEAD_W; pz = dx / lenXZ * BEAD_W;
+    } else {                            // vertical seam: ribbon faces +X
+      px = BEAD_W; pz = 0;
+    }
+    const y1 = p1.y + 0.5, y2 = p2.y + 0.5;
     const o = i * 12;
-    ribbon.pos[o]      = p1.x + px; ribbon.pos[o + 1]  = y; ribbon.pos[o + 2]  = p1.z + pz;
-    ribbon.pos[o + 3]  = p1.x - px; ribbon.pos[o + 4]  = y; ribbon.pos[o + 5]  = p1.z - pz;
-    ribbon.pos[o + 6]  = p2.x - px; ribbon.pos[o + 7]  = y; ribbon.pos[o + 8]  = p2.z - pz;
-    ribbon.pos[o + 9]  = p2.x + px; ribbon.pos[o + 10] = y; ribbon.pos[o + 11] = p2.z + pz;
+    ribbon.pos[o]      = p1.x + px; ribbon.pos[o + 1]  = y1; ribbon.pos[o + 2]  = p1.z + pz;
+    ribbon.pos[o + 3]  = p1.x - px; ribbon.pos[o + 4]  = y1; ribbon.pos[o + 5]  = p1.z - pz;
+    ribbon.pos[o + 6]  = p2.x - px; ribbon.pos[o + 7]  = y2; ribbon.pos[o + 8]  = p2.z - pz;
+    ribbon.pos[o + 9]  = p2.x + px; ribbon.pos[o + 10] = y2; ribbon.pos[o + 11] = p2.z + pz;
   }
 
   function beadColor(t, p, out) {    // t = age seconds, p = power 0..1

@@ -24,11 +24,27 @@ directly with GitHub Pages.)
 
 ## Quick start — weld the frame from the photo
 
-1. Press **🔥 DEMO: Weld 2D Frame** (right sidebar) — generates G-code for a
+1. Press **🔥 DEMO 1: Weld 2D Frame** (right sidebar) — generates G-code for a
    1200 × 800 mm window-frame grid (40 × 40 tubes, 3 × 3 cells: corner, T and
    cross joints, exactly like the welded frames in the reference photo).
 2. Press **▶ START**. Watch the gantry weld all 20 seams; beads glow orange-hot
    and cool down. Use **Sim speed** up to 40× for fast runs.
+
+## Demo 2 — vertical edge welding (A/C axes in play)
+
+Press **📐 DEMO 2: Vertikale Kanten (A/C-Achsen)** — the head welds the
+**vertical butt edges** of the frame tubes (the 40 mm high end-face seams at
+the 4 corners, 8 T-joints and 8 cross-rail joints). Each seam needs its own
+head orientation, so this program drives the rotary axes:
+
+- `G1 A40 C135` tilts the gun 40° onto the vertical face and yaws the whole
+  arm around Z to face the seam (every seam has its own C angle: 0, ±45, ±90,
+  ±135, 180°)
+- the tip then welds **up the vertical edge** (`G1 Z37 F350`) while the
+  kinematics keep the tool tip exactly on the seam (RTCP)
+- `G1 A0` returns the head to vertical for the rapid between seams
+
+German-language program, also shipped standalone as `demos/frame_vertical_edges.nc`.
 
 ## Manual control (left sidebar)
 
@@ -87,10 +103,13 @@ Arc moves (`G2/G3`) sweep in the XY plane; Z, A and C helix along the arc.
 ```
 index.html          UI shell (sidebars, joysticks, DRO, G-code panel)
 js/machine.js       3D scene, machine model, kinematics, weld effects
-js/gcode.js         G-code parser, motion runner, demo generator
+js/gcode.js         G-code parser, motion runner, demo generators
 js/app.js           UI wiring, joysticks, DRO, program transport
-demos/frame_demo.nc standalone demo program (same as the DEMO button)
+demos/frame_demo.nc standalone demo 1: top seams of the 2D frame
+demos/frame_vertical_edges.nc  standalone demo 2: vertical edges (A/C)
+scripts/            headless end-to-end tests (Chrome DevTools Protocol)
 vendor/             three.min.js r128, OrbitControls.js (offline)
 ```
 
-`index.html?autorun=demo` loads and starts the frame demo automatically.
+`index.html?autorun=demo` loads and starts the frame demo automatically,
+`index.html?autorun=demo2` starts the vertical-edge demo.

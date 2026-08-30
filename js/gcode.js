@@ -279,7 +279,7 @@
           } else {
             ['x', 'y', 'z', 'c', 'a'].forEach(ax => { q[ax] = p[ax] + (t[ax] - p[ax]) * u; });
           }
-          this._emit(q);
+          this._emit(q, blk);
           if (this.hooks.onFeed) this.hooks.onFeed(blk.kind === 'rapid' ? RAPID_RATE : (blk.f || 1200));
 
           if (this.tMove >= dur) {
@@ -298,9 +298,9 @@
       }
     },
 
-    _emit(q) {
+    _emit(q, blk) {
       // clamp to machine limits through hook target
-      if (this.hooks.onTarget) this.hooks.onTarget(q);
+      if (this.hooks.onTarget) this.hooks.onTarget(q, blk);
     },
 
     _finish(line) {
@@ -387,6 +387,79 @@
   }
 
   // ------------------------------------------------------------------
+  // DEMO 2 — VERTIKALNAHT-SCHWEISSEN (vertical edge welding, A/C in use)
+  // The torch welds the 40 mm high vertical butt edges of the frame tubes.
+  // Every seam needs its own head orientation: A tilts the gun onto the
+  // vertical face, C yaws the whole arm to face the seam. RTCP keeps the
+  // tip on the seam while the gantry solves the wrist position.
+  // ------------------------------------------------------------------
+  function demoVerticalEdgesGcode() {
+    const L = [];
+    const push = (s) => L.push(s);
+    const f = (n) => (Math.round(n * 100) / 100).toString();
+    const zLow = 3, zHigh = 37, zSafe = 60, tilt = 40;
+    const hy = 400 / 3;
+
+    push('; =====================================================');
+    push('; DEMO 2 : VERTIKALNAHT-SCHWEISSEN (vertical edges)');
+    push('; Der Kopf schweisst die senkrechten Stosskanten (40 mm)');
+    push('; der Rahmenrohre. Dafuer kommen die Rundachsen zum');
+    push('; Einsatz:  A = Brenner kippen  |  C = Arm schwenken.');
+    push('; Jede Naht bekommt ihre eigene A/C-Orientierung.');
+    push('; Naht: je Kante Z' + zLow + ' -> Z' + zHigh + ' (34 mm), F350');
+    push('; =====================================================');
+    push('G21 G90 G17 G54            (mm, absolut, XY-Ebene)');
+    push('T1 M6                      (Laser-Schweissbrenner T1)');
+    push('G0 X0 Y0 Z100              (Sicherheitsgoeshoehe)');
+    push('');
+
+    const seam = (x, y, cDeg, tag) => {
+      push(`; --- ${tag}`);
+      push(`G1 A${tilt} C${cDeg} F1500        (Kopf kippen + schwenken)`);
+      push(`G0 X${f(x)} Y${f(y)} Z${zSafe}`);
+      push(`G1 Z${zLow} F800                (an Kante absenken)`);
+      push('M3 S100                      (Laser EIN)');
+      push(`G1 Z${zHigh} F350              (VERTIKALNAHT nach oben)`);
+      push('M5                           (Laser AUS)');
+      push(`G0 Z${zSafe}`);
+      push('G1 A0 F1500                  (Kopf wieder senkrecht)');
+      push('');
+    };
+
+    push('; ============ RAHMENECKEN (Fasen-Ø 45° von innen) ============');
+    seam(-580, -380, 135, 'Ecke oben-links  (-580, -380), C=135°');
+    seam(580, -380, 45, 'Ecke oben-rechts ( 580, -380), C= 45°');
+    seam(580, 380, -45, 'Ecke unten-rechts( 580,  380), C=-45°');
+    seam(-580, 380, -135, 'Ecke unten-links (-580,  380), C=-135°');
+
+    push('; ============ STEG -> OBERRAHMEN (Y=380, Blick +Y) ============');
+    [-220, -180, 180, 220].forEach(vx =>
+      seam(vx, 380, -90, `Steg X${vx} an Oberrahmen, C=-90°`));
+
+    push('; ============ STEG -> UNTERRAHMEN (Y=-380, Blick -Y) ============');
+    [-220, -180, 180, 220].forEach(vx =>
+      seam(vx, -380, 90, `Steg X${vx} an Unterrahmen, C=90°`));
+
+    push('; ============ QUERSTAB -> LINKER RAHMEN (X=-580, Blick -X) ============');
+    [-hy, hy].forEach(yy => {
+      seam(-580, yy - 20, 180, `Querstab Y${f(yy - 20)} links, C=180°`);
+      seam(-580, yy + 20, 180, `Querstab Y${f(yy + 20)} links, C=180°`);
+    });
+
+    push('; ============ QUERSTAB -> RECHTER RAHMEN (X=580, Blick +X) ============');
+    [-hy, hy].forEach(yy => {
+      seam(580, yy - 20, 0, `Querstab Y${f(yy - 20)} rechts, C=0°`);
+      seam(580, yy + 20, 0, `Querstab Y${f(yy + 20)} rechts, C=0°`);
+    });
+
+    push('; ============ FERTIG ============');
+    push('G0 X0 Y0 Z100');
+    push('M5');
+    push('M30                        (Programmende)');
+    return L.join('\n');
+  }
+
+  // ------------------------------------------------------------------
   window.Sim = window.Sim || {};
-  window.Sim.GCode = { parse, Runner, demoFrameGcode, RAPID_RATE };
+  window.Sim.GCode = { parse, Runner, demoFrameGcode, demoVerticalEdgesGcode, RAPID_RATE };
 })();

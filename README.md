@@ -1,5 +1,8 @@
 # CNC 5-Axis Laser Welding Simulator
 
+**▶ Live demo: https://mikeassistant07-bot.github.io/cnc-weld-simulator/**
+(no install — runs in any browser: phone, tablet, laptop)
+
 A browser-based simulator of a 3-axis CNC gantry machine (X 1200 mm × Y 1200 mm × Z 200 mm)
 whose spindle carries a **5-axis gripper arm**. The arm has two extra rotary axes:
 
